@@ -41,4 +41,3 @@ function CreateCatalogs {
     }
 }
 
-CreateCatalogs
