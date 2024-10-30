@@ -1,86 +1,86 @@
-function scanner {
+
+
+
+
+
+
+function scanner_module {
     param (
-        # Input parameter for the main directory path to scan
-        [string]$mainPath  
+        [string]$Path
     )
+    $exludePaths = @("C:\Windows\")
+    $allFiles = Get-ChildItem -Path $Path -File -Recurse -Force -ErrorAction SilentlyContinue
+    $allFilesCount = $allFiles.Count
+    $total = 0
+    $results = @()
+    $diskUtil = Get-Counter | Select-Object -ExpandProperty CounterSamples | Where-Object { $_.Path -like '*\% disk time*' } | Select-Object -ExpandProperty cookedValue
 
-    # Counter for the total number of files processed
-    $totalFiles = 0  
-    # List to store file details
-    $fileList = New-Object System.Collections.Generic.List[Object]  
-    
-    try {
-        # Retrieve files without wildcard patterns to avoid errors
-        # Get all files in the directory recursively
-        $files = Get-ChildItem -Path $mainPath -File -Recurse -ErrorAction Stop 
-        $totalFilesCount = $files.Count  # Count the total number of files found
+    if ($diskUtil -gt 50) {
+        do {
+            Start-Sleep -Milliseconds 500
+            $diskUtil = Get-Counter | Select-Object -ExpandProperty CounterSamples | Where-Object { $_.Path -like '*\% disk time*' } | Select-Object -ExpandProperty cookedValue            
+        } while ($diskUtil -gt 50)
+        
+    }
+    else {
 
-        foreach ($file in $files) {
-            try {
-                # Increment the file counter
-                $totalFiles += 1  
-
-                # Compute the MD5 hash of the file
-                $hash = Get-FileHash $file.FullName -Algorithm MD5 -ErrorAction SilentlyContinue  
+        foreach ($file in $allFiles) {
+            if ($file -notcontains $exludePaths) {
+                try {
                 
-                $fileList.Add([PSCustomObject]@{
-                    # File name
-                    Name = $file.Name 
-                    # Full path to the file
-                    Path = $file.FullName  
-                    # Hash value or "No Hash" if not computed
-                    Hash = if ($hash) { $hash.Hash } else { "No Hash" }  
-                })
-                
-                # Write-Progress -Activity "Scanning files" -Status "$totalFiles/$totalFilesCount files processed" -PercentComplete (($totalFiles / $totalFilesCount) * 100)  # Progress reporting (commented out)
+                    $total += 1
+                    $date = Get-Date -Format "dd/MM/yyyy_HH:mm:ss"
+                    $result = Get-FileHash -Path $file.FullName -Algorithm MD5 -ErrorAction SilentlyContinue
+                    $results += [PSCustomObject]@{
+                        Name = $file.Name
+                        Path = $file.FullName
+                        Hash = if ($result) { $result.Hash } else { Write-Output "Error" }
+                        Date = $date
+                    }
+
+                    Write-Progress -Activity "Scanning files" -Status "$total/$allFilescount files processed" -PercentComplete (($total / $allFilesCount) * 100) 
+               
+                }
+            
+            
+                catch {
+                    Write-Output "Error $($_.Exception.Message)"
+                }
             }
-            catch {
-                # Handle errors during file processing
-                Write-Output "Error processing $($file.FullName): $($_.Exception.Message)"  
+            else {
+                continue
             }
         }
+    }
 
-        # Output the total number of files scanned
-        Write-Output "Scanned $totalFiles files in $mainPath."  
-        # Return the list of scanned files
-        return $fileList  
-    }
-    catch {
-        # Handle errors when accessing the directory
-        Write-Output "Error scanning directory $mainPath : $($_.Exception.Message)"  
-        # Return an empty array on error
-        return @()  
-    }
+
+    return $results
+
+}
+$date = Get-Date -Format "dd-MM-yyyy_HH-mm-ss"
+$mainScanResultsPath = 'C:\Program Files\BasicAV\Definitions\Scan_Results\Main_Scan.json'
+$anotherScanResultPath = "C:\Program Files\BasicAV\Definitions\Scan_Results\Another_Scan_$date.json"
+# $mainDisk = Get-Volume | Select-Object -ExpandProperty DriveLetter
+try {
+if (Test-Path -Path $mainScanResultsPath) {
+    Write-Host "1"
+    #foreach($disk in $mainDisk){
+    $results = scanner_module -Path "D:\Winrar"
+    #}
+    $results | ConvertTo-Json | Out-File -FilePath $anotherScanResultPath -Encoding utf8
+    Write-Host "2"
+}
+else {
+    
+   # foreach ($disk in $mainDisk) {
+        $results = scanner_module -Path "D:\Winrar" #$disk":\"
+        Write-Host "3"
+   # }
+   $results | ConvertTo-Json | Out-File -FilePath $mainScanResultsPath -Encoding utf8
+   Write-Host "4"
+}
+}
+catch {
+    Write-Output "Error $($_.Exception.Message)"
 }
 
-# Define an array of main paths to scan
-$mainPaths = @(
-    'D:\Git\'  
-)
-
-# Initialize a list to store results from all scanned paths
-$allResults = New-Object System.Collections.Generic.List[Object]  
-
-foreach ($mainPath in $mainPaths) {
-    # Call the scanner function for each main path
-    $result = scanner -mainPath $mainPath  
-    if ($result -is [System.Collections.IEnumerable] -and $result.Count -gt 0) {
-        # Add the results to the combined results list
-        $allResults.AddRange($result)  
-        # Output confirmation of added results
-        Write-Output "Added results for $mainPath."  
-    } else {
-        # Handle the case where no valid results were returned
-        Write-Output "Error: scanner did not return a valid list of objects for path $mainPath"  
-    }
-}
-
-if ($allResults.Count -gt 0) {
-    # Save results to a JSON file
-    $allResults | Select-Object -Property Name, Path, Hash | ConvertTo-Json | Out-File -FilePath Scan_results.json -Encoding UTF8  
-    # Output confirmation of file save
-    Write-Output "Results saved to Scan_results.json."  
-} else {
-    # Handle the case where there are no results to save
-    Write-Output "No results to save. Check the paths and permissions."  
-}

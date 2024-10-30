@@ -2,17 +2,22 @@
 function CreateCatalogs {
 
     $mainPath = 'C:\Program Files\BasicAV'
-    $subDirectory = @("Scripts", "Quarantine", "Definitions", "Logs")
+    $subDirectory = @("Scripts", "Quarantine", "Definitions", "Logs", "Scan_Results")
     $checker = Test-Path $mainPath -ErrorAction SilentlyContinue
     try {
         if ($checker) {
             Write-Host "Main Directory Exist "
+            $allDirectories = Get-ChildItem -Path $mainPath -Directory
+            foreach($dir in $allDirectories)
+            {
+                Test-Path -Path $dir
+            }
         }
         else {
             New-Item -Path $mainPath -ItemType Directory *> $null
             foreach ($directory in $subDirectory) {
             
-                if ($directory -ne "Quarantine") {
+                if ($directory -ne "Quarantine" -and $directory -ne "Scan_Results") {
                     $path = "$mainPath\$directory"
                     $pathChecker = Test-Path -Path $path -ErrorAction SilentlyContinue
                     #Write-Host "1 $path" # Debug
@@ -30,6 +35,11 @@ function CreateCatalogs {
                     New-Item -Path $path -ItemType Directory -ErrorAction SilentlyContinue *> $null
                     Write-Host "$path Created"
                 }
+                elseif ($directory -eq "Scan_Results" -and (Test-Path -Path "$mainPath\Definitions\")) {
+                    $path = "$mainPath\Definitions\$directory"
+                    New-Item -Path $path -ItemType Directory -ErrorAction SilentlyContinue *> $null
+                    Write-Host "$path Created"
+                }
                 else {
                     Write-Host "Directory Exist or check Permissions"
                 }
@@ -41,3 +51,4 @@ function CreateCatalogs {
     }
 }
 
+CreateCatalogs
