@@ -1,101 +1,101 @@
 
-
-
-
-
-
-function scanner_module {
+function Set-Scan {
     param (
         [string]$Path,
         [int]$Batch,
         [string]$ExcludedPath
     )
+
+    # Initialize an array of paths to exclude from scanning. 
+    # This includes the Windows directory by default and any additional excluded paths provided.
     $excludePaths = @("C:\Windows\")
     $excludePaths += $ExludedPath
+
+    # Retrieve all files within the specified path, excluding the defined paths, recursively.
+    # Errors are suppressed for smoother execution.
     $allFiles = Get-ChildItem -Path $Path -Exclude $excludePaths* -File -Recurse -Force -ErrorAction SilentlyContinue
     $allFilesCount = $allFiles.Count
     $total = 0
     $results = @()
-    #$diskUtil = Get-Counter | Select-Object -ExpandProperty CounterSamples | Where-Object { $_.Path -like '*\% disk time*' } | Select-Object -ExpandProperty cookedValue
 
-
+    # Optionally, the disk utilization check can be enabled here.
+    # This section is currently commented out but can be used to pause the scan if disk usage exceeds 50%.
+    <# 
+    $diskUtil = Get-Counter | Select-Object -ExpandProperty CounterSamples | Where-Object { $_.Path -like '*\% disk time*' } | Select-Object -ExpandProperty cookedValue
+    #
     # if ($diskUtil -gt 50) {
     #     do {
     #         Start-Sleep -Milliseconds 500
     #         $diskUtil = Get-Counter | Select-Object -ExpandProperty CounterSamples | Where-Object { $_.Path -like '*\% disk time*' } | Select-Object -ExpandProperty cookedValue            
     #     } while ($diskUtil -gt 50)
-        
     # }
-    # else {
 
-        foreach ($file in $allFiles) {
-           # if (<#($file.FullName -notcontains $ExcludedPath) -and #> ($file.FullName -notcontains $excludePaths)) {
-                try {
-            
+    # Process each file found in the specified path.
+    # For each file, calculate its MD5 hash and capture the date and time of the scan.
+    #>
+    foreach ($file in $allFiles) {
+        # Uncomment the conditional check if you want to exclude specific paths dynamically.
+        # if (<#($file.FullName -notcontains $ExcludedPath) -and #> ($file.FullName -notcontains $excludePaths)) {
 
-                    $total += 1
-                    $date = Get-Date -Format "dd/MM/yyyy_HH:mm:ss"
-                    $result = Get-FileHash -Path $file.FullName -Algorithm MD5 -ErrorAction SilentlyContinue
-                    $results += [PSCustomObject]@{
-                        Name = $file.Name
-                        Path = $file.FullName
-                        Hash = if ($result) { $result.Hash } else { Write-Output "Error" }
-                        Date = $date
-                    }
+        try {
+            $total += 1
+            $date = Get-Date -Format "dd/MM/yyyy_HH:mm:ss"
 
-                    Write-Progress -Activity "Scanning files" -Status "$total/$allFilesCount files processed" -PercentComplete (($total / $allFilesCount) * 100) 
-            
-            
-                }
-                catch {
-                    Write-Output "Error $($_.Exception.Message)"
-                }
-            #}
-            # else {
-            #     continue
-            # }
+            # Calculate the file's hash and add file information to the results array.
+            $result = Get-FileHash -Path $file.FullName -Algorithm MD5 -ErrorAction SilentlyContinue
+            $results += [PSCustomObject]@{
+                Name = $file.Name
+                Path = $file.FullName
+                Hash = if ($result) { $result.Hash } else { Write-Output "Error" }
+                Date = $date
+            }
+
+            # Display the progress of the scanning operation.
+            Write-Progress -Activity "Scanning files" -Status "$total/$allFilesCount files processed" -PercentComplete (($total / $allFilesCount) * 100) 
         }
-# }
-
-
-    return $results
-
-}
-$date = Get-Date -Format "dd-MM-yyyy_HH-mm-ss"
-$mainScanResultsPath = 'C:\Program Files\BasicAV\Definitions\Scan_Results\Main_Scan.json'
-$anotherScanResultPath = "C:\Program Files\BasicAV\Definitions\Scan_Results\Another_Scan_$date.json"
-$mainDisk = Get-Volume | Select-Object -ExpandProperty DriveLetter
-$allResults = @()
-try {
-    if (Test-Path -Path $mainScanResultsPath) {
-        foreach ($disk in $mainDisk) {
-            $results = scanner_module -Path $disk":\"
-            $allResults += $results
+        catch {
+            # Output error message if there’s an issue processing the file.
+            Write-Output "Error $($_.Exception.Message)"
         }
-        $results | ConvertTo-Json | Out-File -FilePath $anotherScanResultPath -Encoding utf8
-        # Write-Host "2"
+        # }
+        # else {
+        #     continue # Skip excluded paths (if uncommented in the condition above)
+        # }
     }
-    else {
     
-        foreach ($disk in $mainDisk) {
-            $results = scanner_module -Path $disk":\" 
+    # Return the scan results to the caller.
+    return $results
+}
+function Compare-Results {
+    param (
+    [string]$FirstPath,
+    [string]$SecoundPath
+    #[string]$DestPath
+    
+    )
+    $firstJsonContent = Get-Content -Path $FirstPath | ConvertFrom-Json
+    $secoundJsonContent = Get-Content -Path $SecoundPath | ConvertFrom-Json
+    $results = @()
+    $allResults = @()
+    foreach($item in $firstJsonContent)
+    {
+        $match = $secoundJsonContent | Where-Object {($_.Path -eq $item.Path) -or ($_.Name -eq $item.Name) -and ($_.Hash -eq $item.Hash) }
+
+        if ($match -eq $false)
+        {
+            $results += $item
             $allResults += $results
-            #    Write-Host "3"
         }
-        $allResults | ConvertTo-Json | Out-File -FilePath $mainScanResultsPath -Encoding utf8
-        # Write-Host "4"
     }
-}
-catch {
-    Write-Output "Error $($_.Exception.Message)"
-}
+    Move-Item -Path $SecoundPath
+    return = $allResults
 
-
+}
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZogQsxbx9IllezBBM5/UlSBZ
-# zJegggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUJQaX2FCE84z4oR8zmjHm3D7Z
+# BNKgggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
 # AQUFADAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlMB4XDTI0MTAzMTA5MjQx
 # M1oXDTM0MTAzMTA5MzQxM1owGzEZMBcGA1UEAwwQTGF6eVNjcmlwdFR1cnRsZTCC
 # ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJz6d43WDjnR+UHWBVK990vf
@@ -115,11 +115,11 @@ catch {
 # 0DCCAcwCAQEwLzAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlAhB6NxYOT+UY
 # rkx1ylzJnGAGMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAA
 # MBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgor
-# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSqLrQnEsVAzhS6wXri3iE/HZ8FyzAN
-# BgkqhkiG9w0BAQEFAASCAQB4z7lo1b2tPswzIgD0B41H0zrXITpPjoA1VVCevcVD
-# 5yYXTEFGr2nM858Lw95Qq+vRpCv5L25I4zgovuB8q6VEKpS7ia2BJdaY3plPv3Nq
-# zeiu0Qosaj41LYmTlcwtL3PhE5Grv+68Km85cpCOWENKWs1ymzm6Gln/+K8bymmT
-# dTOMswFYTVXtjHxrp4XAU8Yov59bMZyLNEeyuIwf+G4qfQHsXHB6puYR4oAIOg2m
-# YQnaa74ONUes0n7Juk89bKzb1Gbx7AOFaF1YV0WRsHCROk3/ncakJr5DUNJyX2XA
-# Lvuo5oM0wyCsJDXAkefoWFE84QE/Av0S7onrsGu/xgVg
+# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSSrJEjvW2ifoHiJv/oNKlG2PRjkzAN
+# BgkqhkiG9w0BAQEFAASCAQBW+oYRiOCxpJfa4j9fwn5ng4wM3h+ho1Cu3QQe+JZh
+# 1BoFqxopAyYbZ1K14TWtvcIRGBtVvrPZo+7M3u4VV6LD4gDNRiLBav7r2DfiynQL
+# nAjpZrJLuUBmF916mU4jRvQRlLKThwzpog5f9O/ZYD77dNbD/Tih1Ao9eMPjtYHb
+# q0Yb3KybJTgnPC2HrnOTKidaElKMGtY9H/jRdydhD3/SYQWgP+IKRL/UXy1wEe7Z
+# IYzHWcf7xj27qeuM2j04RJ9atlsm5QTLUVz2dnXmHp3Sx8aDnGtAkZYgdMPM/5af
+# JNhmVW0IIilI1+NsexrQKozKX4xbTxOtAYBn66HyQ6Gc
 # SIG # End signature block
