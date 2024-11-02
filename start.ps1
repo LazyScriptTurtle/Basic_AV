@@ -1,62 +1,73 @@
-
+# Function to create the necessary directories for BasicAV
 function CreateCatalogs {
-
-    $mainPath = "$env:ProgramFiles\BasicAV"
-    $subDirectory = @("Scripts", "Quarantine", "Definitions", "Logs", "Scan_Results")
-    $checker = Test-Path $mainPath -ErrorAction SilentlyContinue
+    # Define the main path where the directories will be created
+    $mainPath = Join-Path $env:ProgramFiles "BasicAV"
+    
+    # Define the primary subdirectories to create
+    $subDirectories = @("Scripts", "Definitions", "Logs")
+    
     try {
-        if ($checker) {
-            Write-Host "Main Directory Exist "
-            $allDirectories = Get-ChildItem -Path $mainPath -Directory
-            foreach($dir in $allDirectories)
-            {
-                Test-Path -Path $dir
+        # Check if the main directory exists; if not, create it
+        if (-Not (Test-Path -Path $mainPath)) {
+            New-Item -Path $mainPath -ItemType Directory -ErrorAction Stop
+            Write-Host "Main directory $mainPath has been created."
+        } else {
+            Write-Host "Main directory $mainPath already exists."
+        }
+
+        # Create the primary subdirectories
+        foreach ($directory in $subDirectories) {
+            $path = Join-Path $mainPath $directory
+            
+            if (-Not (Test-Path -Path $path)) {
+                New-Item -Path $path -ItemType Directory -ErrorAction Stop
+                Write-Host "Directory $path has been created."
+            } else {
+                Write-Host "Directory $path already exists."
             }
         }
-        else {
-            New-Item -Path $mainPath -ItemType Directory
-            foreach ($directory in $subDirectory) {
-            
-                if ($directory -ne "Quarantine" -and $directory -ne "Scan_Results") {
-                    $path = "$mainPath\$directory"
-                    $pathChecker = Test-Path -Path $path -ErrorAction SilentlyContinue
-                    #Write-Host "1 $path" # Debug
-                    if ($pathChecker -eq $false) {
-                        New-Item -Path $path -ItemType Directory -ErrorAction SilentlyContinue *> $null
-                        Write-Host "$path Created"
-                        # Write-Host "2 $path" #Debug
-                    }
-                    else {
-                        Write-Host "Directory Exist or check Permissions"
-                    }
-                }
-                elseif ($directory -eq "Quarantine" -and (Test-Path -Path "$mainPath\Scripts\")) {
-                    $path = "$mainPath\Scripts\$directory"
-                    New-Item -Path $path -ItemType Directory -ErrorAction SilentlyContinue *> $null
-                    Write-Host "$path Created"
-                }
-                elseif ($directory -eq "Scan_Results" -and (Test-Path -Path "$mainPath\Definitions\")) {
-                    $path = "$mainPath\Definitions\$directory"
-                    New-Item -Path $path -ItemType Directory -ErrorAction SilentlyContinue *> $null
-                    Write-Host "$path Created"
-                }
-                else {
-                    Write-Host "Directory Exist or check Permissions"
-                }
+
+        # Create the 'Quarantine' subdirectory within 'Scripts'
+        $quarantinePath = Join-Path $mainPath "Scripts\Quarantine"
+        if (-Not (Test-Path -Path $quarantinePath)) {
+            New-Item -Path $quarantinePath -ItemType Directory -ErrorAction Stop
+            Write-Host "Directory $quarantinePath has been created."
+        } else {
+            Write-Host "Directory $quarantinePath already exists."
+        }
+
+        # Create the 'Scan_Results' directory within 'Definitions'
+        $scanResultsPath = Join-Path $mainPath "Definitions\Scan_Results"
+        if (-Not (Test-Path -Path $scanResultsPath)) {
+            New-Item -Path $scanResultsPath -ItemType Directory -ErrorAction Stop
+            Write-Host "Directory $scanResultsPath has been created."
+        } else {
+            Write-Host "Directory $scanResultsPath already exists."
+        }
+
+        # Create the 'Results' and 'Main' directories within 'Scan_Results'
+        $resultsSubDirectories = @("Results", "Main")
+        foreach ($subDir in $resultsSubDirectories) {
+            $subPath = Join-Path $scanResultsPath $subDir
+            if (-Not (Test-Path -Path $subPath)) {
+                New-Item -Path $subPath -ItemType Directory -ErrorAction Stop
+                Write-Host "Directory $subPath has been created."
+            } else {
+                Write-Host "Directory $subPath already exists."
             }
-        }  
-    }
-    catch {
-        Write-Host "Error $_"
+        }
+
+    } catch {
+        # Output an error message if something goes wrong
+        Write-Host "An error occurred: $_"
     }
 }
-
 CreateCatalogs
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvIgF2R1KqESHnQhXioESb3ri
-# Z6CgggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXBwN5KLmLiLATCLku8/mnWLj
+# 0JygggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
 # AQUFADAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlMB4XDTI0MTAzMTA5MjQx
 # M1oXDTM0MTAzMTA5MzQxM1owGzEZMBcGA1UEAwwQTGF6eVNjcmlwdFR1cnRsZTCC
 # ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJz6d43WDjnR+UHWBVK990vf
@@ -76,11 +87,11 @@ CreateCatalogs
 # 0DCCAcwCAQEwLzAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlAhB6NxYOT+UY
 # rkx1ylzJnGAGMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAA
 # MBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgor
-# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVqFoNpe1gBvv4dL+jqIdvSovSCzAN
-# BgkqhkiG9w0BAQEFAASCAQANvpw2jVX6y4bzq4C2Jm8ZEg1gD4AEo23Phm1DEqJ1
-# /uXLaAkih5IRrs11j4YuWesGaPLGp6l/+OUnYZobd8yW4mVlEUe0NJuJZ+zFTyUr
-# gcKXZXvR3pIpWyq52yTkwErtvSGlEeiCnBMJfCuXbsabnNjSFp9x6j9pdBUb0v3y
-# fju/tB1HAbKEGvB6ZJoKPwPWUN+aPi31rqw0uGlHei0jn9wnayAQy3ZPE7I2gY4V
-# NrsTdYollE2cWlEYeYREKoNFSLA0obiqqhj+jRDmC9HAWN9DJ21U0BsC5Q8Rvbmv
-# F8ZyN24h7ZE0tnEYlNQPu4Ez/FPMPS5n13LYhaOjdNXf
+# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT/YE6osSLqHmqwzXw06ItdxSfd4DAN
+# BgkqhkiG9w0BAQEFAASCAQANITDqUfcvDZ++yNWN5SGhFI68XN849WpsYPehnk/q
+# 7B5/zJotAefObRo1W7yUyLKz6t520xsOD2zb2r/avIU4CZScT4HDzPPopluWZQaY
+# p8W7gFUY8y3AO3+YgpNPCh4qXI6JJW2futwFUeUgS20VYvJZXlUcv/6rJLz9qNNF
+# 14EGlFpcxpgXZSg3Gui9hIJ3VGl6HCaWnhc/eysu539LslBTZ8vcWM5Cyf9xqjlL
+# cnQvHeY8IpN4uQ5QFvtWafZ5aan+eyAKVKjAJivfbQWMmEnRHgdsZmc0EKdlDvV+
+# CT0vmPECHDYO7swVGuSuXD8iIfexGR0PM1ZH/XY40RkE
 # SIG # End signature block
