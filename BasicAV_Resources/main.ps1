@@ -1,35 +1,41 @@
 # Scanner run
-. .\scanner.ps1
-$date = Get-Date -Format "dd-MM-yyyy_HH-mm-ss"
-$mainScanResultsPath = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\Main_Scan.json"
-$anotherScanResultPath = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\Another_Scan_$date.json"
+function Run {
+    param (
+        [string]$mainScanResultsPath,
+        [string]$anotherScanResultPath
+    )
 
-$mainDisk = Get-Volume | Select-Object -ExpandProperty DriveLetter
-$allResults = @()
+    . .\scanner.ps1
 
-try {
-    if (Test-Path -Path $mainScanResultsPath) {
+    # Pobieranie wszystkich dostępnych dysków
+    $mainDisk = @("C", "D")#Get-Volume | Select-Object -ExpandProperty DriveLetter
+    $allResults = @()
+
+    try {
+        # Wykonywanie skanowania na wszystkich dyskach
         foreach ($disk in $mainDisk) {
-            $results = Set-Scan -Path $disk":\" -
+            Write-Host $disk
+            $results = Set-Scan -Path $disk":\"
             $allResults += $results
         }
-        $results | ConvertTo-Json | Out-File -FilePath $anotherScanResultPath -Encoding utf8
+
+        # Zapis wyników skanowania do odpowiedniego pliku JSON
+        $outputPath = if (Test-Path -Path "D:\GitHub\Basic_AV\BasicAV_Resources\result_1.json" <#$mainScanResultsPath#>) { "D:\GitHub\Basic_AV\BasicAV_Resources\result_2.json"<#$anotherScanResultPath#> } else { "D:\GitHub\Basic_AV\BasicAV_Resources\result_1.json"<#$mainScanResultsPath#> }
+        $allResults | ConvertTo-Json | Out-File -FilePath $outputPath -Encoding utf8
     }
-    else {
-        foreach ($disk in $mainDisk) {
-            $results = Set-Scan -Path $disk":\" 
-            $allResults += $results
-        }
-        $allResults | ConvertTo-Json | Out-File -FilePath $mainScanResultsPath -Encoding utf8
+    catch {
+        Write-Output "Error: $($_.Exception.Message)"
     }
-}
-catch {
-    Write-Output "Error $($_.Exception.Message)"
+
+
+$alljsonCompare =@()
+$jsonCompare = Compare-Results -FirstPath $mainScanResultsPath -SecoundPath $anotherScanResultPath
+Write-host "1"
+$alljsonCompare += $jsonCompare
+$alljsonCompare | ConvertTo-Json | Out-File -FilePath D:\GitHub\Basic_AV\BasicAV_Resources\Wyniki.json
+#Write-Output $jsonCompare
 }
 
-$jsonCompare = Compare-Results -FirsrstPath $mainScanResultsPath -SecoundPath $anotherScanResultPath
-
-Write-Output $jsonCompare
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR

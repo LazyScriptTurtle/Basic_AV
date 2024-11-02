@@ -1,96 +1,100 @@
-
-function Set-Scan {
+#function Set-Scan {
     param (
         [string]$Path,
-        [int]$Batch,
         [string]$ExcludedPath
     )
 
-    # Initialize an array of paths to exclude from scanning. 
-    # This includes the Windows directory by default and any additional excluded paths provided.
     $excludePaths = @("C:\Windows\")
-    $excludePaths += $ExludedPath
+    if ($ExcludedPath) { $excludePaths += $ExcludedPath }
 
-    # Retrieve all files within the specified path, excluding the defined paths, recursively.
-    # Errors are suppressed for smoother execution.
-    $allFiles = Get-ChildItem -Path $Path -Exclude $excludePaths* -File -Recurse -Force -ErrorAction SilentlyContinue
-    $allFilesCount = $allFiles.Count
+    # Próbujemy pobrać listę wszystkich plików w podanej ścieżce, z ignorowaniem błędów dostępu
+    try {
+        $allFiles = [System.IO.Directory]::EnumerateFiles($Path, "*.*", [System.IO.SearchOption]::AllDirectories)
+    }
+    catch {
+        Write-Output "Błąd podczas enumeracji plików w ścieżce $Path : $($_.Exception.Message)"
+        return
+    }
+
+    $allFilesCount = ($allFiles | Measure-Object).Count
+
+    if ($allFilesCount -eq 0) {
+        Write-Output "Brak plików do przetworzenia w podanej ścieżce: $Path"
+        return
+    }
+
     $total = 0
     $results = @()
+    $hashAlgorithm = [System.Security.Cryptography.SHA256]::Create()
 
-    # Optionally, the disk utilization check can be enabled here.
-    # This section is currently commented out but can be used to pause the scan if disk usage exceeds 50%.
-    <# 
-    $diskUtil = Get-Counter | Select-Object -ExpandProperty CounterSamples | Where-Object { $_.Path -like '*\% disk time*' } | Select-Object -ExpandProperty cookedValue
-    #
-    # if ($diskUtil -gt 50) {
-    #     do {
-    #         Start-Sleep -Milliseconds 500
-    #         $diskUtil = Get-Counter | Select-Object -ExpandProperty CounterSamples | Where-Object { $_.Path -like '*\% disk time*' } | Select-Object -ExpandProperty cookedValue            
-    #     } while ($diskUtil -gt 50)
-    # }
-
-    # Process each file found in the specified path.
-    # For each file, calculate its MD5 hash and capture the date and time of the scan.
-    #>
     foreach ($file in $allFiles) {
-        # Uncomment the conditional check if you want to exclude specific paths dynamically.
-        # if (<#($file.FullName -notcontains $ExcludedPath) -and #> ($file.FullName -notcontains $excludePaths)) {
+        if ($excludePaths | ForEach-Object { $file -like "$_*" }) { continue } # Sprawdzenie ścieżek
 
         try {
             $total += 1
             $date = Get-Date -Format "dd/MM/yyyy_HH:mm:ss"
+            $fileStream = [System.IO.File]::OpenRead($file)
+            $hashBytes = $hashAlgorithm.ComputeHash($fileStream)
+            $fileStream.Close()
 
-            # Calculate the file's hash and add file information to the results array.
-            $result = Get-FileHash -Path $file.FullName -Algorithm MD5 -ErrorAction SilentlyContinue
+            $hashString = -join ($hashBytes | ForEach-Object { "{0:x2}" -f $_ })
+
             $results += [PSCustomObject]@{
-                Name = $file.Name
-                Path = $file.FullName
-                Hash = if ($result) { $result.Hash } else { Write-Output "Error" }
+                Name = (Get-Item $file).Name
+                Path = $file
+                Hash = $hashString
                 Date = $date
             }
 
-            # Display the progress of the scanning operation.
-            Write-Progress -Activity "Scanning files" -Status "$total/$allFilesCount files processed" -PercentComplete (($total / $allFilesCount) * 100) 
+           # Write-Progress -Activity "Scanning files" -Status "$total/$allFilesCount files processed" -PercentComplete (($total / $allFilesCount) * 100)
         }
         catch {
-            # Output error message if there’s an issue processing the file.
-            Write-Output "Error $($_.Exception.Message)"
+            Write-Output "Błąd podczas przetwarzania pliku $file : $($_.Exception.Message)"
+            continue  # Pomija plik, w którym wystąpił błąd i przechodzi do kolejnego
         }
-        # }
-        # else {
-        #     continue # Skip excluded paths (if uncommented in the condition above)
-        # }
     }
-    
-    # Return the scan results to the caller.
+
+    $hashAlgorithm.Dispose()
     return $results
-}
+
+
+
 function Compare-Results {
     param (
-    [string]$FirstPath,
-    [string]$SecoundPath
-    #[string]$DestPath
-    
+        [string]$FirstPath,
+        [string]$SecoundPath
     )
-    $firstJsonContent = Get-Content -Path $FirstPath | ConvertFrom-Json
-    $secoundJsonContent = Get-Content -Path $SecoundPath | ConvertFrom-Json
-    $results = @()
-    $allResults = @()
-    foreach($item in $firstJsonContent)
-    {
-        $match = $secoundJsonContent | Where-Object {($_.Path -eq $item.Path) -or ($_.Name -eq $item.Name) -and ($_.Hash -eq $item.Hash) }
+    
+    try {
+        # Wczytanie zawartości plików JSON
+        $firstJsonContent = Get-Content -Path $FirstPath | ConvertFrom-Json
+        $secoundJsonContent = Get-Content -Path $SecoundPath | ConvertFrom-Json
+        $results = @()  # Lista wyników z unikalnymi `Hash`
 
-        if ($match -eq $false)
-        {
-            $results += $item
-            $allResults += $results
+        # Tworzymy listę wszystkich hashy z pierwszego pliku
+        $firstHashes = $firstJsonContent | ForEach-Object { $_.Hash }
+        $secoundHashes = $secoundJsonContent | ForEach-Object { $_.Hash }
+        # Iteracja przez elementy drugiego pliku JSON
+        foreach ($item in $secoundJsonContent) {
+            if ($firstHashes -contains $item.Hash) {
+                Continue
+            }
+            else {
+                $results += $item
+            }
         }
+        
+        # Zwracamy tylko te wpisy, których `Hash` nie występuje w pierwszym pliku
+        return $results
     }
-    Move-Item -Path $SecoundPath
-    return = $allResults
-
+    catch {
+        Write-Error "Wystąpił błąd: $($_.Exception.Message)"
+    }
 }
+
+
+    
+
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
