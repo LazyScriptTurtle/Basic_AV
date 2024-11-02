@@ -1,7 +1,7 @@
 
 function CreateCatalogs {
 
-    $mainPath = 'C:\Program Files\BasicAV'
+    $mainPath = "$env:ProgramFiles\BasicAV"
     $subDirectory = @("Scripts", "Quarantine", "Definitions", "Logs", "Scan_Results")
     $checker = Test-Path $mainPath -ErrorAction SilentlyContinue
     try {
@@ -14,7 +14,7 @@ function CreateCatalogs {
             }
         }
         else {
-            New-Item -Path $mainPath -ItemType Directory *> $null
+            New-Item -Path $mainPath -ItemType Directory
             foreach ($directory in $subDirectory) {
             
                 if ($directory -ne "Quarantine" -and $directory -ne "Scan_Results") {
@@ -55,8 +55,8 @@ CreateCatalogs
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5d60JUwPgrmiYICKKPIzc4wp
-# axigggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvIgF2R1KqESHnQhXioESb3ri
+# Z6CgggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
 # AQUFADAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlMB4XDTI0MTAzMTA5MjQx
 # M1oXDTM0MTAzMTA5MzQxM1owGzEZMBcGA1UEAwwQTGF6eVNjcmlwdFR1cnRsZTCC
 # ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJz6d43WDjnR+UHWBVK990vf
@@ -76,11 +76,11 @@ CreateCatalogs
 # 0DCCAcwCAQEwLzAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlAhB6NxYOT+UY
 # rkx1ylzJnGAGMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAA
 # MBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgor
-# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQZYs4USsJt8DV10CrSbPeOgrBrHDAN
-# BgkqhkiG9w0BAQEFAASCAQCaoFq2LnL16sT6h9LHjRrdHgrPLAROKCc3eYyWDw3a
-# loKCbNKR82K3/c3XJxqIT5kHTKiblXrgkoIh6FIltifit0ow1mWruXMwmLEelc7k
-# oyDbcex4ZNTQIzVthdR1min+9Km3rcb59v/b4xLMggU1uAmQyaoRRazlzeMkPj7L
-# w492FHox6HkWt7QIYEBDPqtUShDEZAEQCvRhyANyfiLHy41T6i4DhC7ZtFebOCkx
-# TopqwDMHIb5qcNznuE8e2ThkXhCRCK8JRhLkCXSpD6Qab30qYlCsR9Y8id41+1bU
-# bsiqz8G8g6AKYm60AB6MVPSFyxSACWNp8a8NWiAoNDb9
+# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQVqFoNpe1gBvv4dL+jqIdvSovSCzAN
+# BgkqhkiG9w0BAQEFAASCAQANvpw2jVX6y4bzq4C2Jm8ZEg1gD4AEo23Phm1DEqJ1
+# /uXLaAkih5IRrs11j4YuWesGaPLGp6l/+OUnYZobd8yW4mVlEUe0NJuJZ+zFTyUr
+# gcKXZXvR3pIpWyq52yTkwErtvSGlEeiCnBMJfCuXbsabnNjSFp9x6j9pdBUb0v3y
+# fju/tB1HAbKEGvB6ZJoKPwPWUN+aPi31rqw0uGlHei0jn9wnayAQy3ZPE7I2gY4V
+# NrsTdYollE2cWlEYeYREKoNFSLA0obiqqhj+jRDmC9HAWN9DJ21U0BsC5Q8Rvbmv
+# F8ZyN24h7ZE0tnEYlNQPu4Ez/FPMPS5n13LYhaOjdNXf
 # SIG # End signature block

@@ -1,46 +1,46 @@
-# Scanner run
 function Run {
     param (
-        [string]$mainScanResultsPath,
-        [string]$anotherScanResultPath
+$mainJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\Main\",
+$secondJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\"
     )
-
-    . .\scanner.ps1
-
-    # Pobieranie wszystkich dostępnych dysków
-    $mainDisk = @("C", "D")#Get-Volume | Select-Object -ExpandProperty DriveLetter
-    $allResults = @()
-
-    try {
-        # Wykonywanie skanowania na wszystkich dyskach
-        foreach ($disk in $mainDisk) {
-            Write-Host $disk
-            $results = Set-Scan -Path $disk":\"
-            $allResults += $results
-        }
-
-        # Zapis wyników skanowania do odpowiedniego pliku JSON
-        $outputPath = if (Test-Path -Path "D:\GitHub\Basic_AV\BasicAV_Resources\result_1.json" <#$mainScanResultsPath#>) { "D:\GitHub\Basic_AV\BasicAV_Resources\result_2.json"<#$anotherScanResultPath#> } else { "D:\GitHub\Basic_AV\BasicAV_Resources\result_1.json"<#$mainScanResultsPath#> }
-        $allResults | ConvertTo-Json | Out-File -FilePath $outputPath -Encoding utf8
-    }
-    catch {
-        Write-Output "Error: $($_.Exception.Message)"
-    }
+    
+}
+. .\scanner.ps1
 
 
-$alljsonCompare =@()
-$jsonCompare = Compare-Results -FirstPath $mainScanResultsPath -SecoundPath $anotherScanResultPath
-Write-host "1"
-$alljsonCompare += $jsonCompare
-$alljsonCompare | ConvertTo-Json | Out-File -FilePath D:\GitHub\Basic_AV\BasicAV_Resources\Wyniki.json
-#Write-Output $jsonCompare
+$mainJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\Main\"
+$secondJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\"
+$date = Get-Date -Format "dd-MM-yyyy_HH-mm-ss"
+$allDisk = @("D:\Github\") #Get-Volume | Select-Object -ExpandProperty DriveLetter
+$allResults = @()
+foreach($disk in $allDisk)
+{
+    $result = Set-Scan -Path $disk
+    $allResults += $result
+}
+#Write-Output $allResults
+
+if (Test-Path "$mainJson\main_result.json")
+{
+    $outputDirectory = "$secondJson\addition_result_$date.json"
+    $result | ConvertTo-Json | Out-File -FilePath $outputDirectory -Encoding utf8
+
+}else{
+    $outputDirectory = $mainJson
+    $result | ConvertTo-Json | Out-File -FilePath "$outputDirectory\main_result.json" -Encoding utf8 
+
 }
 
+if ($outputDirectory -notcontains $mainJson)
+{
+   $compare = Compare-Results -FirstPath "$mainJson\main_result.json" -SecondPath $outputDirectory 
+   $compare | ConvertTo-Json | Out-File -FilePath "$secondJson\Wynik_$date.json"
+}
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUuqpH/xy4gRL99ofvoSx8wdlX
-# QkmgggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUr/IAjGkr9IHFx6MsthG9l0zH
+# 6RWgggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
 # AQUFADAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlMB4XDTI0MTAzMTA5MjQx
 # M1oXDTM0MTAzMTA5MzQxM1owGzEZMBcGA1UEAwwQTGF6eVNjcmlwdFR1cnRsZTCC
 # ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJz6d43WDjnR+UHWBVK990vf
@@ -60,11 +60,11 @@ $alljsonCompare | ConvertTo-Json | Out-File -FilePath D:\GitHub\Basic_AV\BasicAV
 # 0DCCAcwCAQEwLzAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlAhB6NxYOT+UY
 # rkx1ylzJnGAGMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAA
 # MBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgor
-# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBREZoKUy1wL9/2VYbiSDTLCu/ljFjAN
-# BgkqhkiG9w0BAQEFAASCAQB87FUhTlAE98/6J5CZeLUCSAN5mfbsdi1DPF7Dtnro
-# 8vloZvYr+bCeulZV0dSKx97LMvCqRKCKXjkAu6FMbwZgzEv+MINhK+ln0esCo54F
-# qOgLIuWSO0eg1g8DjkXhljXIgeUA4ZM0XrahXeoIDbXXGc96L8WDwSC86L8I63hZ
-# 90fyywS8zztdzUJkIHp4TJp6D/b30UjFEGmnSL/UYXm3qbeanPkSu71QCYTjufkJ
-# abtboEbcz8ji23C1EO/K7CmUdm3Uae5OmTzDmuGRNiqrauCqiN6oiA7Rtn3MTHqT
-# fS6AUgQHaMwUlWGi7hR0ox3/goyPzLzXA7l2l5U8fxoH
+# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSRjmf+4hpS6FfFvDq5xpPi6XoPUDAN
+# BgkqhkiG9w0BAQEFAASCAQBIXSROZmeoTaN9an/O+5Hkl1NRD2JjLcQDQqsP1g55
+# REiBNbRlZgrK1nife11sUeXDolzjreZ7kvuc8cNOEZOmnWOxojEfiuGcLSU3jbZN
+# LTAdiHc8lqaLUtsaGcuazyt35o3JG1W/2BY6KCb47QQF67xSp/KgBxC4vZzKk8LB
+# Ib8+6pdGigPM7jNDF7P5J83bGQvqs50aXsO9jJsuj6v/vqlUliHlSk+r6uPU4s5s
+# iQPiOnk61U6wcpPQhzq7thEvwOygDNC23iFyl8yOd9y1TWGGfEJ46IZuRBAqp4jO
+# 7LI1KkeTKm1MRdo9bx8I59IqU4lkZ2BCQU5n9wPX2njy
 # SIG # End signature block
