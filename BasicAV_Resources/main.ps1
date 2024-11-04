@@ -6,7 +6,7 @@ $secondJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\"
     
 }
 . .\scanner.ps1
-
+. .\Malware_Bazar_Api.ps1
 
 $mainJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\Main\"
 $secondJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\"
@@ -15,7 +15,7 @@ $allDisk = Get-Volume | Select-Object -ExpandProperty DriveLetter
 $allResults = @()
 foreach($disk in $allDisk)
 {
-    $result = Set-Scan -Path $disk":\"
+    $result = Set-Scan -Path $disk ":\"
     $allResults += $result
 }
 #Write-Output $allResults
@@ -26,8 +26,9 @@ if (Test-Path "$mainJson\main_result.json")
     $result | ConvertTo-Json | Out-File -FilePath $outputDirectory -Encoding utf8
 
 }else{
-    $outputDirectory = $mainJson
-    $result | ConvertTo-Json | Out-File -FilePath "$outputDirectory\main_result.json" -Encoding utf8 
+    $outputDirectory = "$mainJson\main_result.json"
+    $result | ConvertTo-Json | Out-File -FilePath $outputDirectory -Encoding utf8 
+    Copy-Item -Path $outputDirectory -Destination "$secondJson\addition_result_$date.json"
 
 }
 
@@ -35,12 +36,19 @@ if ($outputDirectory -notcontains $mainJson)
 {
    $compare = Compare-Results -FirstPath "$mainJson\main_result.json" -SecondPath $outputDirectory 
    $compare | ConvertTo-Json | Out-File -FilePath "$secondJson\Main\Result_$date.json"
+
+ $path = Get-Hash -SourcePath $outputDirectory
+
+$checker = Check-Hash -Path "$secondJson\Results"
+$checker | ConvertTo-Json | Out-File -FilePath "$env:ProgramFiles\BasicC:\Program Files\BasicAV\Logs\Check-Result-$date.json" 
 }
+Run
+ 
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUr8kqKe1WIb5YgTwns1PSgaZO
-# 0lSgggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXpYBkgoSRmMTNUqZrLwfPNlp
+# /j+gggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
 # AQUFADAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlMB4XDTI0MTAzMTA5MjQx
 # M1oXDTM0MTAzMTA5MzQxM1owGzEZMBcGA1UEAwwQTGF6eVNjcmlwdFR1cnRsZTCC
 # ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJz6d43WDjnR+UHWBVK990vf
@@ -60,11 +68,11 @@ if ($outputDirectory -notcontains $mainJson)
 # 0DCCAcwCAQEwLzAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlAhB6NxYOT+UY
 # rkx1ylzJnGAGMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAA
 # MBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgor
-# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSHXVQ9ARlN/RZKw1bzx52xZCeDjTAN
-# BgkqhkiG9w0BAQEFAASCAQBOApNqt8TWJlF+rbOHYTLa2bDsUztL6zkfM/LrTx8r
-# bJkRsB+niqP4IcLHhPCYsvNcndefVVFsX1hynmA+7cM5M27YSGEx7d/HH7nxHkBy
-# F8xuTIn2qplYm0kyrPh14dqMtWN/tVzfK7Q0DSI9k6r9D34Z+mpGmNZIxivIqaK/
-# iy2N8eYiG2V2LAvcdqsDBTCAWSORH74AYq7k1/gaiI1A44CmBHVygTH1RN0OU66i
-# o2gU8rmKpisteM8LucqK/aM10Ky88QMgeaNzQvPdO3S4e3lnzIvxrGOai5jfD6oS
-# CKzIcVzTTt6QzJ3PA4lrWDURut7hsVkhOW13MT8rS0dO
+# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQdNL/H0u0FRCioKM73mS5uA6Bs6DAN
+# BgkqhkiG9w0BAQEFAASCAQBZs3J5l+9Z23njz6+iNbr5L++A7x8jx+tCJ7ULJUuw
+# Jl+0vmVwQAhuK9rvuYuSp8Dzmj8kmSg8mPLcpeXNv2wmh9tFJxSMpefIxrSUOKvo
+# aMqwW8Rko+7mRjaX4nsIrM39gfFEfGonk1pcMpq/yigyyav691G0c8K++5VhIu4y
+# py4P2otlwN7a8moQKZUoE0nz1PmMPBQYiPIlP9IsNcruCPW2JJNmi1rNIV3mi8I3
+# HW9VdIHXY0IOt7iG1Uj1aeSUZp8yh8i208XnDNMzSQiDMOP9Rz5VjP0/66uaLJG/
+# jq+AhW5d3aHkPayVSG0cVzOO2nS0/EUqbYKhDtH8kSxv
 # SIG # End signature block

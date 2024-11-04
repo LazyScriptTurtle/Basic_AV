@@ -1,75 +1,48 @@
-# Function to initialize a scan of a directory and compute SHA256 hash for each file.
 function Set-Scan {
     param (
         [string]$Path
     )
 
-    # Check if the provided path exists
-    if (-not [System.IO.Directory]::Exists($Path)) {
-        Write-Error "The specified path '$Path' does not exist."
-        return
+    # Tworzenie obiektu DirectoryInfo
+    $directoryInfo = New-Object System.IO.DirectoryInfo($Path)
+
+    # Rekursywne pobieranie wszystkich plików
+    $allFiles = $directoryInfo.GetFiles("*.*", [System.IO.SearchOption]::AllDirectories)
+    $allFilesCount = $allFiles.Count
+    $total = 0
+    $startTime = Get-Date
+    $allResults = @()
+
+    foreach ($file in $allFiles) {
+        $total ++
+        $hash = Get-FileHash -Path $file.FullName -Algorithm SHA256
+        $result = [PSCustomObject]@{
+            Name = $file.Name
+            Path = $file.FullName
+            Hash = $hash.Hash
+        }
+        $allResults += $result
+
+        # Progress
+        $percentComplete = ($total / $allFilesCount) * 100
+
+        # time estimation
+        $elapsedTime = (Get-Date) - $startTime
+        $estimatedTotalTime = ($elapsedTime.TotalSeconds / $total) * $allFilesCount
+        $remainingTime = $estimatedTotalTime - $elapsedTime.TotalSeconds
+
+        # time format
+        $remainingTimeFormatted = [TimeSpan]::FromSeconds($remainingTime)
+
+        # show progress
+        Write-Progress -Activity "File Scan" -Status " $total/$allFilesCount (Time to End: $($remainingTimeFormatted.Hours):$($remainingTimeFormatted.Minutes):$($remainingTimeFormatted.Seconds))" -PercentComplete $percentComplete
     }
 
-    # Initialize SHA256 object
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-
-    # Initialize collection to store results
-    $results = @()
-
-    # Function to compute SHA256 hash for a single file
-    function Get-FileHash ([string]$filePath) {
-        try {
-            # Open file in read-only mode
-            $fileStream = [System.IO.File]::OpenRead($filePath)
-            $hashBytes = $sha256.ComputeHash($fileStream)
-            $fileStream.Close()
-
-            # Convert hash to hexadecimal format
-            $hashString = [BitConverter]::ToString($hashBytes) -replace '-', ''
-            
-            # Create the resulting object and add it to the results collection
-            $results += [PSCustomObject]@{
-                FileName = [System.IO.Path]::GetFileName($filePath)
-                FilePath = $filePath
-                SHA256Hash = $hashString
-            }
-        }
-        catch {
-            Write-Warning "Failed to read file '$filePath': $($_.Exception.Message)"
-        }
-    }
-
-    # Recursive function to safely process files within directories
-    function ProcessDirectory ([string]$directoryPath) {
-        try {
-            # Get list of files
-            $files = [System.IO.Directory]::GetFiles($directoryPath)
-            foreach ($file in $files) {
-                # Calculate and store result for each file
-                Get-FileHash -filePath $file
-            }
-
-            # Get list of subdirectories and process them recursively
-            $directories = [System.IO.Directory]::GetDirectories($directoryPath)
-            foreach ($subDir in $directories) {
-                ProcessDirectory -directoryPath $subDir
-            }
-        }
-        catch {
-            # Ignore access errors for directories
-            Write-Warning "Failed to access directory '$directoryPath': $($_.Exception.Message)"
-        }
-    }
-
-    # Start processing from the main directory
-    ProcessDirectory -directoryPath $Path
-
-    # Dispose of the SHA256 object
-    $sha256.Dispose()
-
-    # Return the results collection
-    return $results
+    # results
+    $allResults
 }
+
+
 
 
 
@@ -114,11 +87,41 @@ function Compare-Results {
     return $allResults
 }
 
+
+function Get-Hash {
+[CmdletBinding()]
+param (
+[string]$SourcePath,
+[string]$DestPath = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\Results"
+)
+
+$firstFile = Get-Content -Path $SourcePath | ConvertFrom-Json 
+$allHash = @()
+foreach ($file in $firstFile)
+{
+
+    $hash = [PSCustomObject]@{
+        Hash = $file.Hash
+    }
+    $allHash += $hash
+
+}
+$date = Get-Date -Format "dd-MM-yyyy_HH-mm-ss"
+$DestPath = Join-Path -Path $DestPath -ChildPath "Results_$date.json"
+$allHash | ConvertTo-Json | Out-File -FilePath $DestPath
+
+return $DestPath
+
+}
+
+
+
+
 # SIG # Begin signature block
 # MIIFjQYJKoZIhvcNAQcCoIIFfjCCBXoCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXn1B/Chqaa2nIUnZljyNggxd
-# CYigggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUE36pfedJ1oeV6xtjJMXBGk3d
+# LWmgggMnMIIDIzCCAgugAwIBAgIQejcWDk/lGK5MdcpcyZxgBjANBgkqhkiG9w0B
 # AQUFADAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlMB4XDTI0MTAzMTA5MjQx
 # M1oXDTM0MTAzMTA5MzQxM1owGzEZMBcGA1UEAwwQTGF6eVNjcmlwdFR1cnRsZTCC
 # ASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAJz6d43WDjnR+UHWBVK990vf
@@ -138,11 +141,11 @@ function Compare-Results {
 # 0DCCAcwCAQEwLzAbMRkwFwYDVQQDDBBMYXp5U2NyaXB0VHVydGxlAhB6NxYOT+UY
 # rkx1ylzJnGAGMAkGBSsOAwIaBQCgeDAYBgorBgEEAYI3AgEMMQowCKACgAChAoAA
 # MBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwGCisGAQQBgjcCAQsxDjAMBgor
-# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS0Pu4jLhU2vs+VW0S2aA/Dv+7ARTAN
-# BgkqhkiG9w0BAQEFAASCAQB95Ky5brOWLcjCrz8iBOnFgw7ejgEI5zhk/+ug8v/F
-# XFWDHxN2BOfOIDuARV+/kKKfCjbBEqKDhBcVwHSGpQMRoRKWIJbnLiBe9V9D16vW
-# vuoGIb4qoKKBwwt+9zom6dOkRnkDx/0U/JgATs2Z3B7ZBkFzQZzCDNp/0EZLh2u9
-# qsjl544hecqNyHYnAgDfJ2d9NDfYWw9OWIDEYahEPn/ILLyxK0VzgdMkPm3sjy5d
-# XglGdzeZRwgOZ2aj305Gi1RYcWiTEI4ImaSfGjeUiOWq+ouAxSCEqEJnZeevzL3J
-# 5/0trKjRi5hDapPXRxOpDDOmFc0qn2T7sEfANwZIJ4Ot
+# BgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBR0/2nVtvvXckGikOBmJNJm1+zaKjAN
+# BgkqhkiG9w0BAQEFAASCAQASNunvihywzUYQivYros5iiQeS54Dj+xKfAEZ1UH3a
+# tRXe3fkHzHEC1ABSouWj/CimISIWskRtRzMHuByxBlctgX8yr0pjKg7LlUfCOypB
+# 3A5XMhF0209GmVOg+ogbzrUeUkebJEa383VWMBhmKTBPumvUqSgWR9oGc1UxME53
+# r7T+fouRwxgMrmGXMFM722MZNaa7j7czsbgqEOCzlT7xfbVO6/fEz/qf6sfxXksq
+# VYHcjkyvaSsC1sgRazHqxEbn5UIv3Oku2oHTrCvkWZnFBihLaaQMl0jkKFL23vNf
+# T83ezk49VZVmZUcm5oOzaScdeZDdf3cSFedhivIfFai1
 # SIG # End signature block
