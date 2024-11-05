@@ -7,6 +7,9 @@ $secondJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\"
 }
 . .\scanner.ps1
 . .\Malware_Bazar_Api.ps1
+. .\GetHash.ps1
+. .\CompareResults.ps1
+. .\OfflineHashChecker.ps1
 
 $mainJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\Main\"
 $secondJson = "$env:ProgramFiles\BasicAV\Definitions\Scan_Results\"
@@ -15,7 +18,7 @@ $allDisk = Get-Volume | Select-Object -ExpandProperty DriveLetter
 $allResults = @()
 foreach($disk in $allDisk)
 {
-    $result = Set-Scan -Path $disk ":\"
+    $result = Set-Scan -Path $disk":\"
     $allResults += $result
 }
 #Write-Output $allResults
@@ -40,7 +43,7 @@ if ($outputDirectory -notcontains $mainJson)
  $path = Get-Hash -SourcePath $outputDirectory
 
 $checker = Check-Hash -Path "$secondJson\Results"
-$checker | ConvertTo-Json | Out-File -FilePath "$env:ProgramFiles\BasicC:\Program Files\BasicAV\Logs\Check-Result-$date.json" 
+$checker | ConvertTo-Json | Out-File -FilePath "$env:ProgramFiles\BasicAV\Logs\Check-Result-$date.json" 
 }
 Run
  
