@@ -1,71 +1,109 @@
-function Set-Scan {
+
+
+function Run-SimpleScanner {
     param (
-        [string]$Path
+    [string]$Path
     )
 
-    # Tworzenie obiektu DirectoryInfo
-    $directoryInfo = New-Object System.IO.DirectoryInfo($Path)
-    $excludedPath = @("System Volume Information", "Documents and Settings")
+    $paths = @( 
+        "C:\Windows\System32",
+        "C:\Windows\SysWOW64",
+        "C:\Windows\Temp",
+        "C:\Windows\Prefetch",
+        "C:\Windows\Fonts",
+        "C:\Windows\Tasks",
+        "C:\Windows\Installer",
+        "C:\Users\$env:USERNAME\AppData\Local",
+        "C:\Users\$env:USERNAME\AppData\Local\Temp",
+        "C:\Users\$env:USERNAME\AppData\Roaming",
+        "C:\ProgramData",
+        "C:\Program Files",
+        "C:\Program Files\Common Files",
+        "C:\Program Files (x86)",
+        "C:\ProgramData\Microsoft\Windows Defender",
+        "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup",
+        "C:\Windows\SoftwareDistribution\Download",
+        "C:\Windows\WinSxS",
+        "C:\Windows\Logs",
+        "C:\Windows\explorer.exe",
+        "C:\Windows\regedit.exe",
+        "C:\Windows\system.ini",
+        "C:\Windows\win.ini",
+        "C:\Users\$env:USERNAME\Desktop",
+        "C:\Users\$env:USERNAME\Downloads",
+        "C:\Users\$env:USERNAME\Documents",
+        "C:\Windows\ServiceProfiles\LocalService",
+        "C:\Windows\ServiceProfiles\NetworkService",
+        "C:\Windows\SystemApps",
+        "C:\Windows\IME",
+        "C:\Users\Public",
+        "C:\Users\Default",
+        "C:\Recovery",
+        "C:\Windows\Panther",
+        "C:\Windows\debug",
+        "C:\Windows\Globalization",
+        "C:\Windows\rescache",
+        "C:\Windows\PolicyDefinitions",
+        "C:\inetpub",
+        "C:\PerfLogs",
+        "C:\Windows\LiveKernelReports",
+        "C:\Windows\SystemResources",
+        "C:\Windows\diagnostics",
+        "C:\Windows\Vss",
+        "C:\Windows\Speech_OneCore",
+        "C:\Windows\ShellExperiences",
+        "C:\Windows\Web",
+        "C:\Windows\INF",
+        "C:\Windows\System32\winevt\Logs",
+        "C:\Users"
+    )
+    $result = New-Object System.Collections.Generic.List[Object]
+    if ($null -eq $Path) {
+        foreach ($p in $paths) {
+            if (Test-Path -Path $p) {
+                $allItems = Get-ChildItem -Path $p -file -Recurse -ErrorAction SilentlyContinue
+                $allItemsCount = $allItems.Count
+                $total = 0
+                foreach ($item in $allItems) {
+                    $total ++
+                    $hash = Get-FileHash -Path $item.FullName -Algorithm SHA256 -ErrorAction SilentlyContinue
+                    $result.Add([PSCustomObject]@{
+                            Name = $item
+                            Path = $item.FullName
+                            Hash = if ($hash) { $hash.Hash }else {}
+    
+                        })
+                    Write-Progress -Activity "Scanning $p" -Status " Scanned $total for $allItemsCount" -PercentComplete (($total / $allItemsCount) * 100)
+                }
 
-    # List to store all files
-    $allFiles = @()
-
-    try {
-        # Using Get-ChildItem to recursively fetch files
-        $allFiles = Get-ChildItem -Path $Path -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
-            # Exclude directories based on their names
-            $excludedPath -notcontains $_.Directory.Name
-        }
-    }
-    catch {
-        Write-Warning "An error occurred while scanning the directory: $_"
-        return
-    }
-
-    $allFilesCount = $allFiles.Count
-    $total = 0
-    $startTime = Get-Date
-    $allResults = @()
-
-    foreach ($file in $allFiles) {
-        $total++
-        try {
-            # Calculate hash for the file
-            $hash = Get-FileHash -Path $file.FullName -Algorithm SHA256 -ErrorAction SilentlyContinue
-            $result = [PSCustomObject]@{
-                Name = $file.Name
-                Path = $file.FullName
-                Hash = if($hash.Hash){$hash.Hash}else {Continue}
             }
-            $allResults += $result
-        }
-        catch {
-            Write-Warning "Failed to access file: $($file.FullName). Error: $_"
-            continue
-        }
-
-        # Progress
-        $percentComplete = ($total / $allFilesCount) * 100
-
-        # Time estimation
-        $elapsedTime = (Get-Date) - $startTime
-        $estimatedTotalTime = ($elapsedTime.TotalSeconds / $total) * $allFilesCount
-        $remainingTime = $estimatedTotalTime - $elapsedTime.TotalSeconds
-
-        # Time format
-        $remainingTimeFormatted = [TimeSpan]::FromSeconds($remainingTime)
-
-        # Show progress (update after every 10 files)
-        if ($total % 10 -eq 0) {
-            Write-Progress -Activity "File Scan" `
-                            -Status " $total/$allFilesCount (Time to End: $($remainingTimeFormatted.Hours):$($remainingTimeFormatted.Minutes):$($remainingTimeFormatted.Seconds))" `
-                            -PercentComplete $percentComplete
+            else {
+                Continue
+            }
         }
     }
+    else {
+        $allItems = Get-ChildItem -Path $Path -file -Recurse -ErrorAction SilentlyContinue
+        $allItemsCount = $allItems.Count
+        $total = 0
+        foreach ($item in $allItems) {
+            if (Test-Path -Path $item.FullName) {
+                $total ++
+                $hash = Get-FileHash -Path $item.FullName -Algorithm SHA256 -ErrorAction SilentlyContinue
+                $result.Add([PSCustomObject]@{
+                        Name = $item.Name
+                        Path = $item.FullName
+                        Hash = if ($hash) { $hash.Hash }else {}
 
-    # Final progress display (when done)
-    Write-Progress -Activity "File Scan" -Status "Completed" -PercentComplete 100
+                    })
+                Write-Progress -Activity "Scanning: $Path" -Status " Scanned $total for $allItemsCount" -PercentComplete (($total / $allItemsCount) * 100)
+            }
+            else {
+                Continue
+            }
 
-    # Return the results
-    $allResults
+        }
+    }
+    return $result
 }
+Run-SimpleScanner
