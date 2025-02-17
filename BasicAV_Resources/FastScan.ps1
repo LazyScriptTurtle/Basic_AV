@@ -50,7 +50,7 @@ function Fast-Scan {
         "%USERPROFILE%\Start Menu\Programs\Startup",  
         "%USERPROFILE%\Local Settings\Temp"
     )
-
+    $resultCollection = @()
     foreach ($path in $fastPath) {
         $itemInPath = Get-ChildItem -Path $path -Recurse -ErrorAction SilentlyContinue
         $totalItem = $itemInPath.Count
