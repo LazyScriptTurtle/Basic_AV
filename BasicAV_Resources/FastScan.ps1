@@ -65,7 +65,7 @@ function Fast-Scan {
                     LastTimeWrite = $item.LastWriteTime
                     CreationTime  = $item.CreationTime
                 })
-            Write-Progress -Activity "Scan $path / $item.Directory" -Status " Scanned $total for $totalItem" -PercentComplete (($total / $totalItem) * 100)
+            Write-Progress -Activity "Scan $path | $item.Directory" -Status " Scanned $total for $totalItem" -PercentComplete (($total / $totalItem) * 100)
         }
         return $resultCollection
     }

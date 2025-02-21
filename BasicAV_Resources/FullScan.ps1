@@ -1,11 +1,9 @@
 function Full-Scan {
-
-    # Add-Type -AssemblyName "System.Windows.Forms"
-
+    
     $resultCollection = @()
     $driveList = Get-Volume | Select-Object -ExpandProperty DriveLetter
     foreach ($drive in $driveList) {
-        #[System.Windows.Forms.MessageBox]::Show("Collecting item from $drive", "Informacja")
+      
         $itemOnDrive = Get-ChildItem -Path "$drive`:\" -Recurse -ErrorAction SilentlyContinue
         $totalItem = $itemOnDrive.Count
         $total = 0

@@ -33,12 +33,12 @@ function File-Extensions {
 
 
         switch -Wildcard ($hex) {
-            "25 50 44 46 *" { return "PDF" }               # PDF
-            "FF D8 FF *"    { return "JPEG/JPG" }          # JPEG/JPG
-            "89 50 4E 47 *" { return "PNG" }              # PNG
-            "50 4B 03 04 *" { return "ZIP" }              # ZIP
-            "4D 5A *"       { return "EXE" }              # EXE (Windows)
-            "23 21 2F 62 69 6E 2F 62" { return "Script" }  # Shebang (#!/bin/bash)
+            "25 50 44 46 *" { return "PDF" }               
+            "FF D8 FF *"    { return "JPEG/JPG" }          
+            "89 50 4E 47 *" { return "PNG" }             
+            "50 4B 03 04 *" { return "ZIP" }             
+            "4D 5A *"       { return "EXE" }            
+            "23 21 2F 62 69 6E 2F 62" { return "Script" }  
             default {
 
                 $extension = [System.IO.Path]::GetExtension($FilePath).ToLower()
